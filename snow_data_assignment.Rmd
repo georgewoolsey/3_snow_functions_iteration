@@ -18,6 +18,9 @@ library(tidyverse)
 library(lubridate)
 library(readxl)
 library(pdftools)
+library(RColorBrewer)
+library(scales)
+
 
 ```
 
@@ -212,7 +215,7 @@ headers <- pdf_text('https://snowstudies.org/wp-content/uploads/2022/02/Serially
 # create function to read data
 my_data_reader <- function(file){
   # extract name of file
-  fname = substr(file, str_locate(file, "SBB_")[2]+1, str_locate(file, "SBB_")[2]+4)
+  fname <- substr(file, str_locate(file, "SBB_")[2]+1, str_locate(file, "SBB_")[2]+4)
   # read in data
   df <- read_table(file
                   , skip = 4
@@ -220,8 +223,9 @@ my_data_reader <- function(file){
                   , skip_empty_rows = TRUE
                   , na = c("-9999.000", "")
                 ) %>% 
-        select("year", "month", "day", "air.temp..K.", "precip..kg.m.2.s.1.") %>%
+        select("year", "month", "day", "hour", "air.temp..K.", "precip..kg.m.2.s.1.") %>%
         mutate(site = fname)
+  return(df)
 }
   
 ```
@@ -230,19 +234,151 @@ my_data_reader <- function(file){
 ## Question 4 
 Use the `map` function to read in both meteorological files. Display a summary of your tibble.
 
-```{r, warning=F, message=F, results='hide'}
+```{r, warning=F, message=F}
 # read in data using function created above
-metoc_full <- map_dfr(file_names, my_data_reader)
+metoc_hourly_full <- map_dfr(file_names, my_data_reader)
 # show data summary
-summary(metoc_full)
+summary(metoc_hourly_full)
 ```
 
 ## Question 5 
 Make a line plot of mean temp by year by site (using the `air temp [K]` variable). Is there anything suspicious in the plot? Adjust your filtering if needed.
 
+This initial plot of mean hourly temperature by year shows a much lower average temperature for both sites in the first year of the data (2003).
+
+```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
+# summarize mean temp by year, site
+metoc_site_year <- metoc_hourly_full %>% 
+  group_by(site, year) %>% 
+  summarise(mean_temp = mean(air.temp..K.)
+            , cnt = n()) %>% 
+  arrange(site, year)
+
+# function to create line graph of temp by year for each site
+my_line_graph <- function(my_data){
+  print(
+  ggplot(my_data, aes(x = year, y = mean_temp, color = site)) +
+    geom_line(alpha=0.8, size = 1.3) + 
+    geom_point(alpha=0.8, size = 1.3) + 
+    scale_x_continuous(limits = c(min(metoc_hourly_full$year), max(metoc_hourly_full$year)), breaks = seq(1900, 2200, by = 1)) +
+    labs(
+        title = "Average Temperature by Year"
+        , subtitle = "Swamp Angel Study Plot and Senator Beck Study Plot"
+      ) +
+    ylab("Mean Temp. (K)") +
+    xlab("") +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    theme(
+      legend.position="bottom"
+      , legend.box = "horizontal"
+      , axis.text.x = element_text(size = 11)
+    )
+  )
+}
+
+# plot with full data
+my_line_graph(metoc_site_year)
+
+```
+
+Looking at a count of the records by year reveals that the first and last year of the data does not include a full year of data. As this is hourly data, a full year of data should have 365*24 = 8,760 records (8,784 records on leap year).
+```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
+# investigate what is happening in 2003 by looking at record counts
+ggplot(metoc_site_year, aes(x= as.character(year), y=cnt, fill = site)) + 
+  geom_col(alpha=0.8, width = 0.7) + 
+  geom_text(aes(label = scales::comma(cnt)), colour = "black", angle = 90, hjust="top") +
+  facet_grid(. ~ site) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+      title = "Number of hourly records by year"
+      , subtitle = "Swamp Angel Study Plot and Senator Beck Study Plot"
+    ) +
+  ylab("Count Obs.") +
+  xlab("") +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_bw() +
+  theme(
+    legend.position="none"
+    , axis.text.x = element_text(size = 11, angle = 90, vjust=0.2)
+  )
+```
+
+We can filter out yearly records that have incomplete data and plot the average hourly temperature by year again.
+```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
+# line graph of temp by year for each site filtered for complete data
+my_line_graph(metoc_site_year %>% filter(cnt >= 8760))
+```
+
 ## Question 6
 Write a function that makes line plots of monthly average temperature at each site for a given year. Use a for loop to make these plots for 2005 to 2010. Are monthly average temperatures at the Senator Beck Study Plot ever warmer than the Snow Angel Study Plot?
 Hint: https://ggplot2.tidyverse.org/reference/print.ggplot.html
+
+```{r, warning=F, message=F, results='hide', fig.width = 6, fig.height = 4}
+# summarize mean temp by year, site
+metoc_site_year_mo <- metoc_hourly_full %>% 
+  group_by(site, year, month) %>% 
+  summarise(mean_temp = mean(air.temp..K.)
+            , cnt = n()) %>% 
+  arrange(site, year, month)
+
+# function to create line graph of temp by year for each site
+my_line_graph_month <- function(my_data, my_year){
+  #generate title
+  my_title <- paste0(as.character(my_year), " Average Temperature by Month")
+  #plot
+  (
+  ggplot(my_data %>% filter(year==my_year), aes(x = (month), y = mean_temp, color = site)) +
+    geom_line(alpha=0.8, size = 1.3) + 
+    geom_point(alpha=0.8, size = 1.3) + 
+    scale_x_discrete(limits=month.abb) +
+    labs(
+        title = my_title
+        , subtitle = "Swamp Angel Study Plot and Senator Beck Study Plot"
+      ) +
+    ylab("Mean Temp. (K)") +
+    xlab("") +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    theme(
+      legend.position="bottom"
+      , legend.box = "horizontal"
+      , axis.text.x = element_text(size = 11)
+    )
+  )
+}
+
+# plot with loop to create a plot for each year
+my_years <- c(2005:2010)
+for (i in 1:length(my_years)) {
+  print( my_line_graph_month(metoc_site_year_mo, my_years[i]) )
+}
+```
+
+### A better way?
+
+Producing an individual chart for each year of interest can also be accomplished by using the `facet_grid` option in `ggplot`. With this option there is no need to write a loop to produce an individual graph for each year.
+```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
+#plot each year using facet_grid 
+  ggplot(metoc_site_year_mo %>% filter(year %in% my_years), aes(x = (month), y = mean_temp, color = site)) +
+    geom_line(alpha=0.8, size = 1.3) + 
+    geom_point(alpha=0.8, size = 1.3) + 
+    facet_grid(. ~ year) +
+    scale_x_discrete(limits=month.abb) +
+    labs(
+        title = "2005-2010 Average Temperature by Month"
+        , subtitle = "Swamp Angel Study Plot and Senator Beck Study Plot"
+      ) +
+    ylab("Mean Temp. (K)") +
+    xlab("") +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    theme(
+      legend.position="bottom"
+      , legend.box = "horizontal"
+      , axis.text.x = element_text(size = 7, angle = 90)
+    )
+```
 
 ## Bonus Question 1
 Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site. 
