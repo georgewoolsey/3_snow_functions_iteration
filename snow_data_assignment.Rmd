@@ -147,7 +147,8 @@ ggplot(snow_yearly,aes(x=Year,y=mean_height,color=site)) +
 
 # Assignment:
 
-## 1. Extract the meteorological data URLs. Here we want you to use the `rvest` package to get the URLs for the `SASP forcing` and `SBSP_forcing` meteorological datasets.
+## Question 1 
+Extract the meteorological data URLs. Here we want you to use the `rvest` package to get the URLs for the `SASP forcing` and `SBSP_forcing` meteorological datasets.
 
 ```{r, warning=F, message=F, results='hide'}
 
@@ -164,7 +165,8 @@ links <- webpage %>%
   
 ```
 
-## 2. Download the meteorological data. Use the `download_file` and `str_split_fixed` commands to download the data and save it in your data folder. You can use a for loop or a map function. 
+## Question 2 
+Download the meteorological data. Use the `download_file` and `str_split_fixed` commands to download the data and save it in your data folder. You can use a for loop or a map function. 
 
 ### Download with for loop
 ```{r, warning=F, message=F, results='hide'}
@@ -192,7 +194,8 @@ if(evaluate == T){
 
 ```
 
-## 3. Write a custom function to read in the data and append a site column to the data. 
+## Question 3 
+Write a custom function to read in the data and append a site column to the data. 
 
 ```{r, warning=F, message=F, results='hide'}
 
@@ -224,7 +227,8 @@ my_data_reader <- function(file){
 ```
 
 
-## 4. Use the `map` function to read in both meteorological files. Display a summary of your tibble.
+## Question 4 
+Use the `map` function to read in both meteorological files. Display a summary of your tibble.
 
 ```{r, warning=F, message=F, results='hide'}
 # read in data using function created above
@@ -233,11 +237,15 @@ metoc_full <- map_dfr(file_names, my_data_reader)
 summary(metoc_full)
 ```
 
-## 5. Make a line plot of mean temp by year by site (using the `air temp [K]` variable). Is there anything suspicious in the plot? Adjust your filtering if needed.
+## Question 5 
+Make a line plot of mean temp by year by site (using the `air temp [K]` variable). Is there anything suspicious in the plot? Adjust your filtering if needed.
 
-## 6. Write a function that makes line plots of monthly average temperature at each site for a given year. Use a for loop to make these plots for 2005 to 2010. Are monthly average temperatures at the Senator Beck Study Plot ever warmer than the Snow Angel Study Plot?
+## Question 6
+Write a function that makes line plots of monthly average temperature at each site for a given year. Use a for loop to make these plots for 2005 to 2010. Are monthly average temperatures at the Senator Beck Study Plot ever warmer than the Snow Angel Study Plot?
 Hint: https://ggplot2.tidyverse.org/reference/print.ggplot.html
 
-## Bonus 1: Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site. 
+## Bonus Question 1
+Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site. 
 
-## Bonus 2: Use a function and for loop to create yearly plots of precipitation by day of year. Color each site. 
+## Bonus Question 2
+Use a function and for loop to create yearly plots of precipitation by day of year. Color each site. 

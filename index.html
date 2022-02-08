@@ -353,8 +353,9 @@ ggplot(snow_yearly,aes(x=Year,y=mean_height,color=site)) +
 </div>
 <div id="assignment" class="section level1">
 <h1>Assignment:</h1>
-<div id="extract-the-meteorological-data-urls.-here-we-want-you-to-use-the-rvest-package-to-get-the-urls-for-the-sasp-forcing-and-sbsp_forcing-meteorological-datasets." class="section level2">
-<h2>1. Extract the meteorological data URLs. Here we want you to use the <code>rvest</code> package to get the URLs for the <code>SASP forcing</code> and <code>SBSP_forcing</code> meteorological datasets.</h2>
+<div id="question-1" class="section level2">
+<h2>Question 1</h2>
+<p>Extract the meteorological data URLs. Here we want you to use the <code>rvest</code> package to get the URLs for the <code>SASP forcing</code> and <code>SBSP_forcing</code> meteorological datasets.</p>
 <pre class="r"><code>#use the rvest package to scrape the url
 site_url &lt;- &quot;https://snowstudies.org/archived-data/&quot;
 webpage &lt;- read_html(site_url)
@@ -366,8 +367,9 @@ links &lt;- webpage %&gt;%
   .[grepl(&quot;.txt&quot;, .)] %&gt;%  # only pull txt files
   .[grepl(&quot;SASP_Forcing|SBSP_Forcing&quot;, .)] # could also use just &quot;_Forcing&quot; but question specifically asks for only SASP and SBSP (in case site is updated later to include a new _Forcing file)</code></pre>
 </div>
-<div id="download-the-meteorological-data.-use-the-download_file-and-str_split_fixed-commands-to-download-the-data-and-save-it-in-your-data-folder.-you-can-use-a-for-loop-or-a-map-function." class="section level2">
-<h2>2. Download the meteorological data. Use the <code>download_file</code> and <code>str_split_fixed</code> commands to download the data and save it in your data folder. You can use a for loop or a map function.</h2>
+<div id="question-2" class="section level2">
+<h2>Question 2</h2>
+<p>Download the meteorological data. Use the <code>download_file</code> and <code>str_split_fixed</code> commands to download the data and save it in your data folder. You can use a for loop or a map function.</p>
 <div id="download-with-for-loop" class="section level3">
 <h3>Download with for loop</h3>
 <pre class="r"><code># extract dataset names
@@ -390,8 +392,9 @@ if(evaluate == T){
 } else{print(&#39;data already downloaded&#39;)}</code></pre>
 </div>
 </div>
-<div id="write-a-custom-function-to-read-in-the-data-and-append-a-site-column-to-the-data." class="section level2">
-<h2>3. Write a custom function to read in the data and append a site column to the data.</h2>
+<div id="question-3" class="section level2">
+<h2>Question 3</h2>
+<p>Write a custom function to read in the data and append a site column to the data.</p>
 <pre class="r"><code># this code grabs the variable names from the metadata pdf file
 headers &lt;- pdf_text(&#39;https://snowstudies.org/wp-content/uploads/2022/02/Serially-Complete-Metadata-text08.pdf&#39;) %&gt;%
   readr::read_lines(.) %&gt;%
@@ -417,25 +420,29 @@ my_data_reader &lt;- function(file){
         mutate(site = fname)
 }</code></pre>
 </div>
-<div id="use-the-map-function-to-read-in-both-meteorological-files.-display-a-summary-of-your-tibble." class="section level2">
-<h2>4. Use the <code>map</code> function to read in both meteorological files. Display a summary of your tibble.</h2>
+<div id="question-4" class="section level2">
+<h2>Question 4</h2>
+<p>Use the <code>map</code> function to read in both meteorological files. Display a summary of your tibble.</p>
 <pre class="r"><code># read in data using function created above
 metoc_full &lt;- map_dfr(file_names, my_data_reader)
 # show data summary
 summary(metoc_full)</code></pre>
 </div>
-<div id="make-a-line-plot-of-mean-temp-by-year-by-site-using-the-air-temp-k-variable.-is-there-anything-suspicious-in-the-plot-adjust-your-filtering-if-needed." class="section level2">
-<h2>5. Make a line plot of mean temp by year by site (using the <code>air temp [K]</code> variable). Is there anything suspicious in the plot? Adjust your filtering if needed.</h2>
+<div id="question-5" class="section level2">
+<h2>Question 5</h2>
+<p>Make a line plot of mean temp by year by site (using the <code>air temp [K]</code> variable). Is there anything suspicious in the plot? Adjust your filtering if needed.</p>
 </div>
-<div id="write-a-function-that-makes-line-plots-of-monthly-average-temperature-at-each-site-for-a-given-year.-use-a-for-loop-to-make-these-plots-for-2005-to-2010.-are-monthly-average-temperatures-at-the-senator-beck-study-plot-ever-warmer-than-the-snow-angel-study-plot" class="section level2">
-<h2>6. Write a function that makes line plots of monthly average temperature at each site for a given year. Use a for loop to make these plots for 2005 to 2010. Are monthly average temperatures at the Senator Beck Study Plot ever warmer than the Snow Angel Study Plot?</h2>
-<p>Hint: <a href="https://ggplot2.tidyverse.org/reference/print.ggplot.html" class="uri">https://ggplot2.tidyverse.org/reference/print.ggplot.html</a></p>
+<div id="question-6" class="section level2">
+<h2>Question 6</h2>
+<p>Write a function that makes line plots of monthly average temperature at each site for a given year. Use a for loop to make these plots for 2005 to 2010. Are monthly average temperatures at the Senator Beck Study Plot ever warmer than the Snow Angel Study Plot? Hint: <a href="https://ggplot2.tidyverse.org/reference/print.ggplot.html" class="uri">https://ggplot2.tidyverse.org/reference/print.ggplot.html</a></p>
 </div>
-<div id="bonus-1-make-a-plot-of-average-daily-precipitation-by-day-of-year-averaged-across-all-available-years.-color-each-site." class="section level2">
-<h2>Bonus 1: Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site.</h2>
+<div id="bonus-question-1" class="section level2">
+<h2>Bonus Question 1</h2>
+<p>Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site.</p>
 </div>
-<div id="bonus-2-use-a-function-and-for-loop-to-create-yearly-plots-of-precipitation-by-day-of-year.-color-each-site." class="section level2">
-<h2>Bonus 2: Use a function and for loop to create yearly plots of precipitation by day of year. Color each site.</h2>
+<div id="bonus-question-2" class="section level2">
+<h2>Bonus Question 2</h2>
+<p>Use a function and for loop to create yearly plots of precipitation by day of year. Color each site.</p>
 </div>
 </div>
 
