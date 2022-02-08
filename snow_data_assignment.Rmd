@@ -1,15 +1,23 @@
 ---
 title: "Snow Data Assignment: Web Scraping, Functions, and Iteration"
 author: "Nathan Mueller"
-date: "2-7-2022"
-output: html_document
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
+
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning=F, message=F}
 library(rvest)
 library(tidyverse)
 library(lubridate)
 library(readxl)
+library(pdftools)
 
 ```
 
@@ -23,7 +31,7 @@ R can read html using either rvest, xml, or xml2 packages. Here we are going to 
 
 ### Extract CSV links from webpage
 
-```{r}
+```{r, warning=F, message=F, results='hide'}
 site_url <- 'https://snowstudies.org/archived-data/'
 
 #Read the web url
@@ -48,7 +56,7 @@ links <- webpage %>%
 
 ### Download data in a for loop
 
-```{r}
+```{r, warning=F, message=F, results='hide'}
 
 #Grab only the name of the file by splitting out on forward slashes
 splits <- str_split_fixed(links,'/',8)
@@ -57,6 +65,7 @@ splits <- str_split_fixed(links,'/',8)
 dataset <- splits[,8] 
 
 #generate a file list for where the data goes
+dir.create("data", showWarnings = FALSE)
 file_names <- paste0('data/',dataset)
 
 for(i in 1:3){
@@ -72,7 +81,7 @@ evaluate <- !all(downloaded)
 
 ### Download data in a map
 
-```{r}
+```{r, warning=F, message=F, results='hide'}
 
 #Map version of the same for loop (downloading 3 files)
 if(evaluate == T){
@@ -85,7 +94,7 @@ if(evaluate == T){
 
 ### Read in just the snow data as a loop
 
-```{r}
+```{r, warning=F, message=F, results='hide'}
 #Pattern matching to only keep certain files
 snow_files <- file_names %>%
   .[!grepl('SG_24',.)] %>%
@@ -106,7 +115,7 @@ snow_files <- file_names %>%
 
 ### Read in the data as a map function
 
-```{r}
+```{r, warning=F, message=F, results='hide'}
 
 our_snow_reader <- function(file){
   name = str_split_fixed(file,'/',2)[,2] %>%
@@ -124,7 +133,7 @@ summary(snow_data_full)
 
 ### Plot snow data
 
-```{r}
+```{r, warning=F, message=F, results='hide'}
 snow_yearly <- snow_data_full %>%
   group_by(Year,site) %>%
   summarize(mean_height = mean(Sno_Height_M,na.rm=T))
@@ -138,33 +147,97 @@ ggplot(snow_yearly,aes(x=Year,y=mean_height,color=site)) +
 
 # Assignment:
 
-1. Extract the meteorological data URLs. Here we want you to use the `rvest` package to get the URLs for the `SASP forcing` and `SBSP_forcing` meteorological datasets.
+## 1. Extract the meteorological data URLs. Here we want you to use the `rvest` package to get the URLs for the `SASP forcing` and `SBSP_forcing` meteorological datasets.
 
-2. Download the meteorological data. Use the `download_file` and `str_split_fixed` commands to download the data and save it in your data folder. You can use a for loop or a map function. 
+```{r, warning=F, message=F, results='hide'}
 
-3. Write a custom function to read in the data and append a site column to the data. 
+#use the rvest package to scrape the url
+site_url <- "https://snowstudies.org/archived-data/"
+webpage <- read_html(site_url)
 
-```{r}
+#find weblinks and extract the urls
+links <- webpage %>%
+  html_nodes("a") %>% # <a> tag defines a hyperlink
+  html_attr("href") %>% # href is the URL the link goes to
+  .[grepl(".txt", .)] %>%  # only pull txt files
+  .[grepl("SASP_Forcing|SBSP_Forcing", .)] # could also use just "_Forcing" but question specifically asks for only SASP and SBSP (in case site is updated later to include a new _Forcing file)
+  
+```
+
+## 2. Download the meteorological data. Use the `download_file` and `str_split_fixed` commands to download the data and save it in your data folder. You can use a for loop or a map function. 
+
+### Download with for loop
+```{r, warning=F, message=F, results='hide'}
+
+# extract dataset names
+splits <- str_split_fixed(links, "/", n = 8)
+dataset <-  splits[,8]
+file_names <- paste0('data/',dataset)
+
+# use download_file to create local copy of data with for loop
+for(i in 1:length(links)){
+  download.file(links[i],destfile=file_names[i])
+}
+
+```
+
+### Download with map function
+```{r, warning=F, message=F, results='hide'}
+# with map function
+downloaded <- file.exists(file_names)
+evaluate <- !all(downloaded)
+if(evaluate == T){
+  map2(links[1:length(links)], file_names[1:length(links)], download.file)
+} else{print('data already downloaded')}
+
+```
+
+## 3. Write a custom function to read in the data and append a site column to the data. 
+
+```{r, warning=F, message=F, results='hide'}
 
 # this code grabs the variable names from the metadata pdf file
-library(pdftools)
 headers <- pdf_text('https://snowstudies.org/wp-content/uploads/2022/02/Serially-Complete-Metadata-text08.pdf') %>%
   readr::read_lines(.) %>%
   trimws(.) %>%
   str_split_fixed(.,'\\.',2) %>%
   .[,2] %>%
   .[1:26] %>%
-  str_trim(side = "left")
+  str_trim(side = "left") %>% 
+  make.names(unique = FALSE, allow_ = TRUE)
 
+# create function to read data
+my_data_reader <- function(file){
+  # extract name of file
+  fname = substr(file, str_locate(file, "SBB_")[2]+1, str_locate(file, "SBB_")[2]+4)
+  # read in data
+  df <- read_table(file
+                  , skip = 4
+                  , col_names = headers
+                  , skip_empty_rows = TRUE
+                  , na = c("-9999.000", "")
+                ) %>% 
+        select("year", "month", "day", "air.temp..K.", "precip..kg.m.2.s.1.") %>%
+        mutate(site = fname)
+}
+  
 ```
 
-4. Use the `map` function to read in both meteorological files. Display a summary of your tibble.
 
-5. Make a line plot of mean temp by year by site (using the `air temp [K]` variable). Is there anything suspicious in the plot? Adjust your filtering if needed.
+## 4. Use the `map` function to read in both meteorological files. Display a summary of your tibble.
 
-6. Write a function that makes line plots of monthly average temperature at each site for a given year. Use a for loop to make these plots for 2005 to 2010. Are monthly average temperatures at the Senator Beck Study Plot ever warmer than the Snow Angel Study Plot?
+```{r, warning=F, message=F, results='hide'}
+# read in data using function created above
+metoc_full <- map_dfr(file_names, my_data_reader)
+# show data summary
+summary(metoc_full)
+```
+
+## 5. Make a line plot of mean temp by year by site (using the `air temp [K]` variable). Is there anything suspicious in the plot? Adjust your filtering if needed.
+
+## 6. Write a function that makes line plots of monthly average temperature at each site for a given year. Use a for loop to make these plots for 2005 to 2010. Are monthly average temperatures at the Senator Beck Study Plot ever warmer than the Snow Angel Study Plot?
 Hint: https://ggplot2.tidyverse.org/reference/print.ggplot.html
 
-Bonus: Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site. 
+## Bonus 1: Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site. 
 
-Bonus #2: Use a function and for loop to create yearly plots of precipitation by day of year. Color each site. 
+## Bonus 2: Use a function and for loop to create yearly plots of precipitation by day of year. Color each site. 
