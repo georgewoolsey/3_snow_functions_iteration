@@ -244,13 +244,13 @@ summary(metoc_hourly_full)
 ## Question 5 
 Make a line plot of mean temp by year by site (using the `air temp [K]` variable). Is there anything suspicious in the plot? Adjust your filtering if needed.
 
-This initial plot of mean hourly temperature by year shows a much lower average temperature for both sites in the first year of the data (2003).
+<span style="color: blue;">This initial plot of mean hourly temperature by year shows a much lower average temperature for both sites in the first year of the data (2003).</span>
 
 ```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
 # summarize mean temp by year, site
 metoc_site_year <- metoc_hourly_full %>% 
   group_by(site, year) %>% 
-  summarise(mean_temp = mean(air.temp..K.)
+  summarise(mean_temp = mean(air.temp..K., na.rm = TRUE)
             , cnt = n()) %>% 
   arrange(site, year)
 
@@ -282,7 +282,8 @@ my_line_graph(metoc_site_year)
 
 ```
 
-Looking at a count of the records by year reveals that the first and last year of the data does not include a full year of data. As this is hourly data, a full year of data should have 365*24 = 8,760 records (8,784 records on leap year).
+<span style="color: blue;">Looking at a count of the records by year reveals that the first and last year of the data do not include a full year of data. As this is hourly data, a full year of data should have 365*24 = 8,760 records (8,784 records on leap year).</span>
+
 ```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
 # investigate what is happening in 2003 by looking at record counts
 ggplot(metoc_site_year, aes(x= as.character(year), y=cnt, fill = site)) + 
@@ -304,7 +305,8 @@ ggplot(metoc_site_year, aes(x= as.character(year), y=cnt, fill = site)) +
   )
 ```
 
-We can filter out yearly records that have incomplete data and plot the average hourly temperature by year again.
+<span style="color: blue;">We can filter out yearly records that have incomplete data and plot the average hourly temperature by year again.</span>
+
 ```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
 # line graph of temp by year for each site filtered for complete data
 my_line_graph(metoc_site_year %>% filter(cnt >= 8760))
@@ -315,10 +317,10 @@ Write a function that makes line plots of monthly average temperature at each si
 Hint: https://ggplot2.tidyverse.org/reference/print.ggplot.html
 
 ```{r, warning=F, message=F, results='hide', fig.width = 6, fig.height = 4}
-# summarize mean temp by year, site
+# summarize mean temp by year, month, site
 metoc_site_year_mo <- metoc_hourly_full %>% 
   group_by(site, year, month) %>% 
-  summarise(mean_temp = mean(air.temp..K.)
+  summarise(mean_temp = mean(air.temp..K., na.rm = TRUE)
             , cnt = n()) %>% 
   arrange(site, year, month)
 
@@ -357,8 +359,9 @@ for (i in 1:length(my_years)) {
 
 ### A better way?
 
-Producing an individual chart for each year of interest can also be accomplished by using the `facet_grid` option in `ggplot`. With this option there is no need to write a loop to produce an individual graph for each year.
-```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
+<span style="color: blue;">Producing an individual chart for each year of interest can also be accomplished by using the `facet_grid` option in `ggplot`. With this option there is no need to write a loop to produce an individual graph for each year.</span>
+
+```{r, warning=F, message=F, results='hide', fig.width = 9, fig.height = 5}
 #plot each year using facet_grid 
   ggplot(metoc_site_year_mo %>% filter(year %in% my_years), aes(x = (month), y = mean_temp, color = site)) +
     geom_line(alpha=0.8, size = 0.9) + 
@@ -383,5 +386,74 @@ Producing an individual chart for each year of interest can also be accomplished
 ## Bonus Question 1
 Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site. 
 
+```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 5}
+# summarize total precipitation by date, site
+metoc_doy_site <- metoc_hourly_full %>%
+  mutate(date_id = make_date(year, month, day)
+         , day_of_year = yday(date_id)
+      ) %>% 
+  group_by(site, date_id, day_of_year) %>% 
+  summarise(tot_precip = sum(precip..kg.m.2.s.1.)) %>% 
+  group_by(site, day_of_year) %>% # now take the avg of total daily precip by doy
+  summarise(mean_daily_precip = mean(tot_precip, na.rm = TRUE)) %>% 
+  arrange(site, day_of_year) %>% 
+  mutate(month_day = as.Date(day_of_year, origin = "1999-12-31")) # this date will make for plotting with date label
+  # note to choose a leap year above to handle years with 366 days
+
+# plot mean precip by doy
+ggplot(metoc_doy_site, aes(x = month_day, y = mean_daily_precip, color = site)) +
+  geom_line(alpha=0.5, size = 0.5) + 
+  geom_point(alpha=0.5, size = 0.4) + 
+  geom_smooth(method = loess, se = FALSE, alpha=1, size = 0.9) + 
+  facet_grid(. ~ site) +
+  scale_x_date(date_labels = "%b-%d", date_minor_breaks = "1 month") +
+  labs(
+      title = "Average Precipitation by Day of Year"
+      , subtitle = "Swamp Angel Study Plot and Senator Beck Study Plot"
+    ) +
+  ylab("Mean Precip. (kg/m2/s)") +
+  xlab("") +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw() +
+  theme(
+    legend.position="none"
+    , axis.text.x = element_text(size = 11, angle = 90)
+  )
+```
+
 ## Bonus Question 2
 Use a function and for loop to create yearly plots of precipitation by day of year. Color each site. 
+
+<span style="color: blue;">Personally, I prefer using `facet_grid` to make small multiples instead of creating an independent graph for each year.</span>
+
+```{r, warning=F, message=F, results='hide', fig.width = 8, fig.height = 9}
+# summarize total precipitation by date, site
+metoc_hourly_full %>%
+  filter(year %in% c(2004:2010)) %>% 
+  mutate(date_id = make_date(year, month, day)
+         , day_of_year = yday(date_id)
+        ) %>% 
+  group_by(site, day_of_year, year) %>% 
+  summarise(tot_precip = sum(precip..kg.m.2.s.1.)) %>% 
+  arrange(site, year, day_of_year) %>% 
+  mutate(month_day = as.Date(day_of_year, origin = "1999-12-31")) %>% # this date will make for plotting with date label
+# plot mean precip by doy
+ggplot(., aes(x = month_day, y = tot_precip, color = site)) +
+  geom_line(alpha=0.5, size = 0.5) + 
+  geom_smooth(method = loess, span = 0.2, se = FALSE, alpha=1, size = 0.9) + 
+  facet_grid(year ~ site, scales = "free_y") +
+  scale_x_date(date_labels = "%b-%d", date_minor_breaks = "1 month") +
+  labs(
+      title = "Precipitation by Day of Year"
+      , subtitle = "Swamp Angel Study Plot and Senator Beck Study Plot"
+    ) +
+  ylab("Tot. Precip. (kg/m2/s)") +
+  xlab("") +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw() +
+  theme(
+    legend.position="none"
+    , axis.text.y = element_text(size = 6)
+    , axis.text.x = element_text(angle = 90)
+  )
+```
